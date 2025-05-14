@@ -15,10 +15,27 @@
         <div class="money">金錢：<span id="money">100</span></div>
         <div class="level">關卡：<span id="level">1</span></div>
         <div class="controls">
-            <button id="buyWeapon">購買武器</button>
-            <button id="upgrade">升級</button>
+            <button id="showShop">武器商店</button>
+            <button id="showUpgrades">升級選項</button>
         </div>
     </div>
+
+    <div class="shop" id="shop">
+        <h2>武器商店</h2>
+        <ul id="weaponList">
+            <!-- 武器列表將在此處動態生成 -->
+        </ul>
+        <button id="closeShop">關閉商店</button>
+    </div>
+
+    <div class="upgrades" id="upgrades">
+        <h2>升級選項</h2>
+        <ul id="upgradeList">
+            <!-- 升級列表將在此處動態生成 -->
+        </ul>
+        <button id="closeUpgrades">關閉升級</button>
+    </div>
+
     <div class="game-over" id="gameOver">
         <h2>遊戲結束</h2>
         <p>你的分數：<span id="finalScore">0</span></p>

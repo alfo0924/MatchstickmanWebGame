@@ -50,3 +50,31 @@ body {
 .game-over h2 {
     margin-top: 0;
 }
+
+/* shop 和 upgrades 樣式 */
+.shop, .upgrades {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    text-align: center;
+    display: none; /* 預設隱藏 */
+    z-index: 10;
+}
+
+.shop h2, .upgrades h2 {
+    margin-top: 0;
+}
+
+.shop ul, .upgrades ul {
+    list-style: none;
+    padding: 0;
+}
+
+.shop li, .upgrades li {
+    margin-bottom: 10px;
+}
