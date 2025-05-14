@@ -347,6 +347,24 @@ function drawPlayer() {
     }
 }
 
+// *** 新增/修正的 drawEnemies 函數 ***
+function drawEnemies() {
+    enemies.forEach(enemy => {
+        if (enemy.isAlive) { // 只繪製存活的敵人
+            enemy.draw();
+        }
+    });
+}
+
+function drawBullets() { // 確保 drawBullets 也存在
+    bullets.forEach(bullet => {
+        if (bullet.isActive) {
+            bullet.draw();
+        }
+    });
+}
+
+
 function updatePlayerHealthUI() {
     const healthPercentage = (player.health / player.maxHealth) * 100;
     playerHealthBar.style.width = `${Math.max(0, healthPercentage)}%`;
@@ -523,17 +541,14 @@ function updatePlayerPosition() {
 // 鍵盤事件
 function handleKeyDown(e) {
     // 測試用 - 顯示按鍵和遊戲狀態
-    console.log("按下按鍵:", e.key, "遊戲暫停:", isGamePaused);
+    // console.log("按下按鍵:", e.key, "遊戲暫停:", isGamePaused);
 
-    // 如果遊戲暫停但不是因為開始畫面，則不處理按鍵
-    if (isGamePaused && levelStartScreen.style.display !== 'block') {
-        // 允許在暫停時按下 Enter 或 空格來開始遊戲
-        if (e.key === 'Enter' || e.code === 'Space') {
-            if (levelStartScreen.style.display === 'block') {
-                startLevelButton.click(); // 觸發 "開始" 按鈕
-            }
+    if (isGamePaused) {
+        // 如果是在levelStartScreen，允許Enter或Space來開始遊戲
+        if (levelStartScreen.style.display === 'block' && (e.key === 'Enter' || e.code === 'Space')) {
+            startLevelButton.click(); // 觸發 "開始" 按鈕
         }
-        return;
+        return; // 如果遊戲暫停且不是開始畫面的觸發，則不執行後續操作
     }
 
     // 如果商店或升級選單打開，不處理遊戲控制按鍵
@@ -552,11 +567,6 @@ function handleKeyDown(e) {
         player.velocityY = JUMP_FORCE;
     } else if (e.key === ' ' || e.key.toLowerCase() === 'k') { // 空格或 K 射擊
         shoot();
-    } else if (e.key === 'Enter') {
-        // 在開始畫面按下 Enter 直接開始遊戲
-        if (levelStartScreen.style.display === 'block') {
-            startLevelButton.click(); // 觸發 "開始" 按鈕
-        }
     }
 }
 
@@ -576,20 +586,18 @@ document.addEventListener('keyup', handleKeyUp);
 
 // 遊戲主循環
 function gameLoop() {
-    // 測試用 - 顯示遊戲狀態
-    console.log("遊戲循環運行中, 暫停狀態:", isGamePaused);
+    // console.log("遊戲循環運行中, 暫停狀態:", isGamePaused, "玩家存活:", player.isAlive);
 
     if (!player.isAlive) {
         if (gameOverScreen.style.display === 'none') {
             gameOver();
         }
-        animationFrameId = requestAnimationFrame(gameLoop);
+        animationFrameId = requestAnimationFrame(gameLoop); // 即使遊戲結束也保持循環，直到明確停止或重置
         return;
     }
 
     if (isGamePaused) {
-        // 即使暫停也保持循環以偵聽開始
-        animationFrameId = requestAnimationFrame(gameLoop);
+        animationFrameId = requestAnimationFrame(gameLoop); // 遊戲暫停時保持循環以更新UI或偵聽開始
         return;
     }
 
@@ -598,7 +606,7 @@ function gameLoop() {
         player.weapon.muzzleFlashActive = false;
     }
 
-    drawBackground(); // 先畫背景
+    drawBackground();
     updatePlayerPosition();
     updateEnemies();
     updateBullets();
@@ -615,26 +623,22 @@ function gameLoop() {
 // 控制敵人生成
 let enemySpawnInterval;
 function startEnemySpawn() {
-    // 清除舊的計時器
     if (enemySpawnInterval) {
         clearInterval(enemySpawnInterval);
     }
 
-    // 立即生成一個敵人，確保有敵人出現
     if (!isGamePaused && player.isAlive) {
-        spawnEnemy();
+        spawnEnemy(); // 立即生成一個敵人
     }
 
-    // 設置新的計時器，定期生成敵人
     enemySpawnInterval = setInterval(() => {
         if (isGamePaused || !player.isAlive) return;
 
-        // 隨關卡增加敵人生成數量和頻率上限
         const maxEnemies = 5 + currentLevel * 2;
         if (enemies.length < maxEnemies) {
             spawnEnemy();
         }
-    }, 1000); // 每秒生成一個敵人，比原來更頻繁
+    }, 2000); // 將生成間隔調整回2秒，避免過於頻繁
 }
 
 function stopEnemySpawn() {
@@ -646,9 +650,9 @@ function stopEnemySpawn() {
 
 // 商店和升級UI邏輯
 showShopButton.addEventListener('click', () => {
-    isGamePaused = true; // 打開商店時暫停遊戲
+    isGamePaused = true;
     shopElement.style.display = 'block';
-    weaponListElement.innerHTML = "";
+    weaponListElement.innerHTML = ""; // 清空舊列表
     weapons.forEach(weapon => {
         const listItem = document.createElement('li');
         listItem.innerHTML = `
@@ -657,21 +661,20 @@ showShopButton.addEventListener('click', () => {
             <button class="buyButton" data-weapon-name='${weapon.name}'>購買</button>`;
         weaponListElement.appendChild(listItem);
     });
+});
 
-    // 使用事件委託來處理按鈕點擊
-    weaponListElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('buyButton')) {
-            const weaponName = e.target.dataset.weaponName;
-            const selectedWeapon = weapons.find(w => w.name === weaponName);
-            if (selectedWeapon) buyWeapon(selectedWeapon);
-        }
-    });
+weaponListElement.addEventListener('click', (e) => { // 事件委託
+    if (e.target.classList.contains('buyButton')) {
+        const weaponName = e.target.dataset.weaponName;
+        const selectedWeapon = weapons.find(w => w.name === weaponName);
+        if (selectedWeapon) buyWeapon(selectedWeapon);
+    }
 });
 
 showUpgradesButton.addEventListener('click', () => {
-    isGamePaused = true; // 打開升級時暫停遊戲
+    isGamePaused = true;
     upgradesElement.style.display = 'block';
-    upgradeListElement.innerHTML = "";
+    upgradeListElement.innerHTML = ""; // 清空舊列表
     upgrades.forEach(upgrade => {
         const listItem = document.createElement('li');
         listItem.innerHTML = `
@@ -680,34 +683,37 @@ showUpgradesButton.addEventListener('click', () => {
             <button class="upgradeButton" data-upgrade-name='${upgrade.name}'>購買</button>`;
         upgradeListElement.appendChild(listItem);
     });
+});
 
-    // 使用事件委託來處理按鈕點擊
-    upgradeListElement.addEventListener('click', (e) => {
-        if (e.target.classList.contains('upgradeButton')) {
-            const upgradeName = e.target.dataset.upgradeName;
-            const selectedUpgrade = upgrades.find(u => u.name === upgradeName);
-            if (selectedUpgrade) buyUpgrade(selectedUpgrade);
-        }
-    });
+upgradeListElement.addEventListener('click', (e) => { // 事件委託
+    if (e.target.classList.contains('upgradeButton')) {
+        const upgradeName = e.target.dataset.upgradeName;
+        const selectedUpgrade = upgrades.find(u => u.name === upgradeName);
+        if (selectedUpgrade) buyUpgrade(selectedUpgrade);
+    }
 });
 
 closeShopButton.addEventListener('click', () => {
     shopElement.style.display = 'none';
-    isGamePaused = false; // 關閉商店時繼續遊戲
-    console.log("關閉商店，遊戲繼續");
+    if (player.isAlive && time > 0) { // 只有在遊戲進行中才解除暫停
+        isGamePaused = false;
+    }
+    console.log("關閉商店，遊戲暫停狀態:", isGamePaused);
 });
 
 closeUpgradesButton.addEventListener('click', () => {
     upgradesElement.style.display = 'none';
-    isGamePaused = false; // 關閉升級時繼續遊戲
-    console.log("關閉升級，遊戲繼續");
+    if (player.isAlive && time > 0) {
+        isGamePaused = false;
+    }
+    console.log("關閉升級，遊戲暫停狀態:", isGamePaused);
 });
 
-function buyWeapon(weaponToBuy) { // 參數名修改以避免與全局變量衝突
+function buyWeapon(weaponToBuy) {
     if (money >= weaponToBuy.cost) {
         money -= weaponToBuy.cost;
         moneyDisplay.innerText = money;
-        player.weapon = { ...weaponToBuy, lastShotTime: 0, muzzleFlashActive: false, muzzleFlashEndTime: 0 }; // 複製武器屬性並重置狀態
+        player.weapon = { ...weaponToBuy, lastShotTime: 0, muzzleFlashActive: false, muzzleFlashEndTime: 0 };
         alert(`已購買 ${weaponToBuy.name}！`);
     } else {
         alert("金錢不足！");
@@ -720,7 +726,6 @@ function buyUpgrade(upgradeToBuy) {
         moneyDisplay.innerText = money;
         upgradeToBuy.effect();
         alert(`已購買 ${upgradeToBuy.name}！`);
-        // 可能需要更新UI，例如血條
         updatePlayerHealthUI();
     } else {
         alert("金錢不足！");
@@ -737,8 +742,6 @@ function updateTimer() {
         clearInterval(gameInterval);
         if (player.isAlive) {
             levelComplete();
-        } else {
-            // gameOver() 會在 gameLoop 中被調用
         }
     }
 }
@@ -746,13 +749,11 @@ function updateTimer() {
 function showLevelStartScreen() {
     isGamePaused = true;
     levelStartScreen.style.display = 'block';
-    currentLevelDisplay.innerText = currentLevel; // 確保顯示正確的關卡數
-    // 停止敵人生成和計時器，直到玩家點擊開始
+    currentLevelDisplay.innerText = currentLevel;
     stopEnemySpawn();
     clearInterval(gameInterval);
 
-    // 確保遊戲循環運行
-    if (!animationFrameId) {
+    if (!animationFrameId) { // 如果還未啟動 gameLoop，則啟動它
         gameLoop();
     }
 }
@@ -760,44 +761,40 @@ function showLevelStartScreen() {
 startLevelButton.addEventListener('click', () => {
     console.log("開始按鈕被點擊");
     levelStartScreen.style.display = 'none';
-    isGamePaused = false; // 關鍵：解除暫停狀態
+    isGamePaused = false;
     startGameplayForLevel();
 });
 
 function startGameplayForLevel() {
     console.log("開始關卡", currentLevel);
-    time = 120; // 每關重置時間
+    time = 120;
     timeDisplay.innerText = time;
-    player.x = canvasWidth / 2; // 重置玩家位置
+    player.x = canvasWidth / 2;
     player.y = groundLevel;
     player.dx = 0;
     player.velocityY = 0;
     player.isJumping = false;
-    player.health = player.maxHealth; // 關卡開始時回滿血
-    player.weapon.lastShotTime = 0; // 確保射擊不延遲
+    player.health = player.maxHealth;
+    player.weapon.lastShotTime = 0;
 
     enemies = [];
     bullets = [];
     particles = [];
 
     levelDisplay.innerText = currentLevel;
+    updatePlayerHealthUI();
 
-    updatePlayerHealthUI(); // 更新血條
-
-    clearInterval(gameInterval); // 清除舊的
+    if (gameInterval) clearInterval(gameInterval);
     gameInterval = setInterval(updateTimer, 1000);
 
-    // 確保敵人生成
-    stopEnemySpawn();
     startEnemySpawn();
 
-    // 確保遊戲循環運行
-    if (!animationFrameId) {
-        gameLoop();
+    isGamePaused = false; // 確保遊戲是運行狀態
+    if (animationFrameId) { // 如果之前已啟動，確保它繼續
+        // gameLoop 會自己處理 isGamePaused
+    } else {
+        gameLoop(); // 如果是首次啟動，或因故停止，重新啟動
     }
-
-    // 確保遊戲未暫停
-    isGamePaused = false;
     console.log("遊戲開始運行，暫停狀態:", isGamePaused);
 }
 
@@ -805,10 +802,10 @@ function levelComplete() {
     isGamePaused = true;
     stopEnemySpawn();
     clearInterval(gameInterval);
-    cancelAnimationFrame(animationFrameId); // 停止動畫
+    // cancelAnimationFrame(animationFrameId); // 讓 gameLoop 根據 isGamePaused 自然停止繪製
 
-    score += time * 5 + currentLevel * 50; // 獎勵分數
-    money += 100 + currentLevel * 50; // 獎勵金錢
+    score += time * 5 + currentLevel * 50;
+    money += 100 + currentLevel * 50;
 
     scoreDisplay.innerText = score;
     moneyDisplay.innerText = money;
@@ -816,23 +813,23 @@ function levelComplete() {
     alert(`關卡 ${currentLevel} 完成！\n剩餘時間獎勵：${time * 5}\n關卡獎勵：${currentLevel * 50}\n獲得金錢：${100 + currentLevel * 50}`);
 
     currentLevel++;
-    if (currentLevel > 3) { // 假設總共3關
+    if (currentLevel > 3) {
         alert("恭喜你！已通關所有關卡！最終分數：" + score);
-        gameOverScreen.style.display = 'block'; // 或顯示通關畫面
+        gameOverScreen.style.display = 'block';
         finalScoreDisplay.innerText = score;
-        // resetGame(); // 可以選擇重置或停留在通關畫面
+        // isGamePaused = true; // 確保通關後遊戲停止
     } else {
-        player.health = player.maxHealth; // 下一關回滿血
+        player.health = player.maxHealth;
         showLevelStartScreen();
     }
 }
 
 function gameOver() {
-    isGamePaused = true; // 確保遊戲主邏輯停止
+    isGamePaused = true;
     player.isAlive = false;
     stopEnemySpawn();
     clearInterval(gameInterval);
-    // cancelAnimationFrame(animationFrameId); // gameLoop 內部會自己停止
+    // cancelAnimationFrame(animationFrameId); // 同上
 
     finalScoreDisplay.innerText = score;
     gameOverScreen.style.display = 'block';
@@ -841,14 +838,14 @@ function gameOver() {
 // 重置遊戲狀態 (用於重新開始)
 function resetGame() {
     score = 0;
-    money = 100; // 初始金錢
+    money = 100;
     currentLevel = 1;
 
     player.maxHealth = 100;
     player.health = player.maxHealth;
     player.isAlive = true;
     player.speed = 4;
-    player.weapon = { // 重置為初始武器
+    player.weapon = {
         name: "手槍",
         damage: 10,
         fireRate: 400,
@@ -864,13 +861,14 @@ function resetGame() {
     levelDisplay.innerText = currentLevel;
     gameOverScreen.style.display = 'none';
 
-    showLevelStartScreen(); // 重新開始時顯示第一關開始畫面
+    isGamePaused = true; // 重置後先暫停，顯示開始畫面
+    showLevelStartScreen();
 }
 
 restartButton.addEventListener('click', () => {
     resetGame();
 });
 
-// 初始調用 - 確保遊戲開始
-showLevelStartScreen(); // 遊戲開始時顯示第一關的開始畫面
-gameLoop(); // 確保遊戲循環啟動
+// 初始調用
+showLevelStartScreen();
+// gameLoop(); // gameLoop 會在 showLevelStartScreen 內部被調用，或在 startGameplayForLevel 中確保運行
