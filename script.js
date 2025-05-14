@@ -256,3 +256,219 @@ restartButton.addEventListener('click', () => {
 });
 
 init(); // 遊戲開始時初始化
+// (接續前面程式碼)
+
+// 敵人類別
+class Enemy {
+    constructor(x, y, speed, health) {
+        this.x = x;
+        this.y = y;
+        this.width = 20;
+        this.height = 40;
+        this.color = 'red';
+        this.speed = speed;
+        this.health = health;
+        this.isAlive = true;
+    }
+
+    // 繪製敵人（簡單火柴人造型）
+    draw() {
+        if (!this.isAlive) return;
+
+        ctx.fillStyle = this.color;
+        // 身體
+        ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
+        // 頭部
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - this.height - 10, 10, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 更新敵人位置，向玩家移動
+    update() {
+        if (!this.isAlive) return;
+
+        // 簡單的水平追蹤玩家
+        if (this.x < player.x) {
+            this.x += this.speed;
+        } else if (this.x > player.x) {
+            this.x -= this.speed;
+        }
+
+        // 可以加上下移動或跳躍等行為，這裡先不做
+
+        // 邊界限制
+        if (this.x - this.width / 2 < 0) this.x = this.width / 2;
+        if (this.x + this.width / 2 > canvasWidth) this.x = canvasWidth - this.width / 2;
+    }
+
+    // 簡單碰撞檢測 (與玩家)
+    checkCollisionWithPlayer() {
+        if (!this.isAlive || !player.isAlive) return false;
+
+        // 簡單矩形碰撞檢測
+        const enemyLeft = this.x - this.width / 2;
+        const enemyRight = this.x + this.width / 2;
+        const enemyTop = this.y - this.height - 10; // 頭部頂部
+        const enemyBottom = this.y;
+
+        const playerLeft = player.x - player.width / 2;
+        const playerRight = player.x + player.width / 2;
+        const playerTop = player.y - player.height - 10;
+        const playerBottom = player.y;
+
+        const isColliding = !(enemyRight < playerLeft ||
+            enemyLeft > playerRight ||
+            enemyBottom < playerTop ||
+            enemyTop > playerBottom);
+
+        return isColliding;
+    }
+}
+
+// 敵人陣列
+let enemies = [];
+
+// 產生敵人
+function spawnEnemy() {
+    // 敵人出現在畫布上方隨機x座標，y固定在地面高度
+    const x = Math.random() * (canvasWidth - 40) + 20;
+    const y = canvasHeight - 10; // 地面高度
+    const speed = 1 + level * 0.3; // 隨關卡提升速度
+    const health = 20 + level * 10;
+
+    const enemy = new Enemy(x, y, speed, health);
+    enemies.push(enemy);
+}
+
+// 控制敵人生成頻率
+let enemySpawnInterval;
+function startEnemySpawn() {
+    enemySpawnInterval = setInterval(() => {
+        if (enemies.length < level * 5) { // 每關最多敵人數量
+            spawnEnemy();
+        }
+    }, 2000); // 每2秒產生一隻敵人
+}
+
+function stopEnemySpawn() {
+    clearInterval(enemySpawnInterval);
+}
+
+// 更新所有敵人
+function updateEnemies() {
+    enemies.forEach(enemy => {
+        enemy.update();
+
+        // 檢查是否碰撞玩家
+        if (enemy.checkCollisionWithPlayer()) {
+            // 玩家受傷
+            player.health -= 10;
+            if (player.health <= 0) {
+                player.isAlive = false;
+            }
+            // 敵人死亡
+            enemy.isAlive = false;
+        }
+    });
+
+    // 移除死亡敵人
+    enemies = enemies.filter(enemy => enemy.isAlive);
+}
+
+// 繪製所有敵人
+function drawEnemies() {
+    enemies.forEach(enemy => enemy.draw());
+}
+
+// 修改 gameLoop 加入敵人更新與繪製
+function gameLoop() {
+    if (!player.isAlive) {
+        if (gameOverScreen.style.display === 'none') {
+            gameOver();
+        }
+        return;
+    }
+
+    clearCanvas();
+    updatePlayerPosition();
+    drawPlayer();
+
+    updateEnemies();
+    drawEnemies();
+
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// 修改 init 加入敵人初始化與生成
+function init() {
+    time = 120;
+    score = 0;
+    // money = 100; // 保留金錢或重置
+    player.x = canvasWidth / 2;
+    player.y = canvasHeight - 50;
+    player.health = 100;
+    player.isAlive = true;
+    player.dx = 0;
+    player.dy = 0;
+
+    enemies = []; // 清空敵人陣列
+
+    scoreDisplay.innerText = score;
+    moneyDisplay.innerText = money;
+    levelDisplay.innerText = level;
+    timeDisplay.innerText = time;
+    gameOverScreen.style.display = 'none';
+
+    clearInterval(gameInterval);
+    gameInterval = setInterval(updateTimer, 1000);
+
+    stopEnemySpawn();
+    startEnemySpawn();
+
+    if (typeof animationFrameId !== 'undefined') {
+        cancelAnimationFrame(animationFrameId);
+    }
+    gameLoop();
+}
+
+// 修改 levelComplete 和 gameOver 停止敵人生成
+function levelComplete() {
+    clearInterval(gameInterval);
+    cancelAnimationFrame(animationFrameId);
+    stopEnemySpawn();
+
+    score += time * 10;
+    money += 50 + (level * 20);
+
+    scoreDisplay.innerText = score;
+    moneyDisplay.innerText = money;
+
+    alert(`關卡 ${level} 完成！\n獲得分數：${score}\n獲得金錢：${money}`);
+
+    level++;
+    if (level > 3) {
+        alert("恭喜你！已通關所有關卡！");
+        init();
+    } else {
+        time = 120;
+        player.x = canvasWidth / 2;
+        player.y = canvasHeight - 50;
+        enemies = [];
+        levelDisplay.innerText = level;
+        timeDisplay.innerText = time;
+        gameInterval = setInterval(updateTimer, 1000);
+        stopEnemySpawn();
+        startEnemySpawn();
+        gameLoop();
+    }
+}
+
+function gameOver() {
+    player.isAlive = false;
+    clearInterval(gameInterval);
+    cancelAnimationFrame(animationFrameId);
+    stopEnemySpawn();
+    finalScoreDisplay.innerText = score;
+    gameOverScreen.style.display = 'block';
+}
