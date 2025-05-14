@@ -1,0 +1,52 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+.game-container {
+    position: relative;
+}
+
+#gameCanvas {
+    background-color: #fff;
+    border: 1px solid #000;
+}
+
+.ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.timer, .score, .money, .level {
+    margin-bottom: 5px;
+}
+
+.controls button {
+    margin-right: 5px;
+}
+
+.game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    text-align: center;
+    display: none; /* 預設隱藏 */
+}
+
+.game-over h2 {
+    margin-top: 0;
+}
