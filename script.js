@@ -219,28 +219,28 @@ let bullets = [];
 const weapons = [
     {
         name: "散彈槍",
-        damage: 15, // 每顆彈丸傷害
+        damage: 70, // 每顆彈丸傷害
         fireRate: 900,
         bulletSpeed: 12,
-        cost: 250,
+        cost: 25,
         pellets: 5, // 彈丸數量
         spreadAngle: 0.3, // 散射角度 (弧度)
         description: "近距離威力巨大，一次發射5顆彈丸。"
     },
     {
         name: "衝鋒槍",
-        damage: 7,
+        damage: 25,
         fireRate: 100,
         bulletSpeed: 14,
-        cost: 400,
+        cost: 20,
         description: "射速極快，持續火力壓制。"
     },
     {
         name: "狙擊槍",
-        damage: 60,
+        damage: 90,
         fireRate: 1800,
         bulletSpeed: 25,
-        cost: 600,
+        cost: 20,
         description: "穿透力強，單發高傷害，射速慢。"
     }
 ];
@@ -248,29 +248,29 @@ const weapons = [
 const upgrades = [
     {
         name: "最大生命值 +50",
-        cost: 150,
+        cost: 20,
         effect: () => { player.maxHealth += 50; player.health = player.maxHealth; updatePlayerHealthUI();},
         description: "永久提升50點最大生命值並回滿。"
     },
     {
         name: "移動速度 +0.5",
-        cost: 200,
+        cost: 20,
         effect: () => { player.speed += 0.5; },
         description: "永久提升移動速度。"
     },
     {
         name: "武器傷害 +15%",
-        cost: 300,
+        cost: 20,
         effect: () => {
             if (player.weapon) {
-                player.weapon.damage = Math.ceil(player.weapon.damage * 1.15);
+                player.weapon.damage = Math.ceil(player.weapon.damage * 1.5);
             }
         },
         description: "提升當前武器基礎傷害15%。"
     },
     {
         name: "射速提升 10%",
-        cost: 250,
+        cost: 20,
         effect: () => {
             if (player.weapon && player.weapon.fireRate > 50) { // 避免射速過快
                 player.weapon.fireRate = Math.max(50, Math.floor(player.weapon.fireRate * 0.9));
