@@ -472,3 +472,250 @@ function gameOver() {
     finalScoreDisplay.innerText = score;
     gameOverScreen.style.display = 'block';
 }
+// (接續前面程式碼)
+
+// 子彈類別
+class Bullet {
+    constructor(x, y, dx, dy, speed, damage, color = 'blue') {
+        this.x = x;
+        this.y = y;
+        this.width = 8;
+        this.height = 4;
+        this.dx = dx; // 水平方向 (1 向右, -1 向左)
+        this.dy = dy; // 垂直方向 (通常為0，除非有拋物線等)
+        this.speed = speed;
+        this.damage = damage;
+        this.color = color;
+        this.isActive = true; // 子彈是否有效
+    }
+
+    // 繪製子彈
+    draw() {
+        if (!this.isActive) return;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+    }
+
+    // 更新子彈位置
+    update() {
+        if (!this.isActive) return;
+        this.x += this.dx * this.speed;
+        this.y += this.dy * this.speed;
+
+        // 檢查子彈是否超出畫布邊界
+        if (this.x < 0 || this.x > canvasWidth || this.y < 0 || this.y > canvasHeight) {
+            this.isActive = false;
+        }
+    }
+
+    // 檢查與單個敵人的碰撞
+    checkCollisionWithEnemy(enemy) {
+        if (!this.isActive || !enemy.isAlive) return false;
+
+        const bulletLeft = this.x - this.width / 2;
+        const bulletRight = this.x + this.width / 2;
+        const bulletTop = this.y - this.height / 2;
+        const bulletBottom = this.y + this.height / 2;
+
+        const enemyLeft = enemy.x - enemy.width / 2;
+        const enemyRight = enemy.x + enemy.width / 2;
+        const enemyTop = enemy.y - enemy.height - 10; // 敵人頭部頂部
+        const enemyBottom = enemy.y; // 敵人腳底
+
+        const isColliding = !(bulletRight < enemyLeft ||
+            bulletLeft > enemyRight ||
+            bulletBottom < enemyTop ||
+            bulletTop > enemyBottom);
+        return isColliding;
+    }
+}
+
+// 子彈陣列
+let bullets = [];
+
+// 玩家武器相關設定
+player.facingDirection = 1; // 1: 右, -1: 左 (用於決定子彈方向)
+player.weapon = {
+    name: "手槍",
+    damage: 10,
+    fireRate: 500, // 毫秒，射擊間隔
+    bulletSpeed: 8,
+    lastShotTime: 0 // 上次射擊時間
+};
+
+// 射擊函數
+function shoot() {
+    const currentTime = Date.now();
+    if (player.weapon && currentTime - player.weapon.lastShotTime > player.weapon.fireRate) {
+        // 子彈起始位置在玩家前方一點
+        const bulletX = player.x + (player.facingDirection * (player.width / 2 + 5));
+        const bulletY = player.y - player.height / 2 - 5; // 大約在玩家胸部高度
+
+        const newBullet = new Bullet(
+            bulletX,
+            bulletY,
+            player.facingDirection, // 子彈水平方向
+            0, // 子彈垂直方向 (目前水平射擊)
+            player.weapon.bulletSpeed,
+            player.weapon.damage
+        );
+        bullets.push(newBullet);
+        player.weapon.lastShotTime = currentTime;
+    }
+}
+
+// 更新所有子彈
+function updateBullets() {
+    bullets.forEach((bullet, bulletIndex) => {
+        bullet.update();
+
+        // 檢查子彈與所有敵人的碰撞
+        enemies.forEach((enemy, enemyIndex) => {
+            if (bullet.checkCollisionWithEnemy(enemy)) {
+                enemy.health -= bullet.damage;
+                bullet.isActive = false; // 子彈擊中後失效
+
+                if (enemy.health <= 0) {
+                    enemy.isAlive = false;
+                    score += 10; // 擊殺敵人得分
+                    money += 5;  // 擊殺敵人得錢
+                    scoreDisplay.innerText = score;
+                    moneyDisplay.innerText = money;
+                }
+            }
+        });
+
+        if (!bullet.isActive) {
+            bullets.splice(bulletIndex, 1); // 從陣列中移除失效的子彈
+        }
+    });
+}
+
+// 繪製所有子彈
+function drawBullets() {
+    bullets.forEach(bullet => bullet.draw());
+}
+
+// 修改鍵盤事件監聽
+function handleKeyDown(e) {
+    if (e.key === 'ArrowRight' || e.key === 'd') {
+        player.dx = player.speed;
+        player.facingDirection = 1; // 更新朝向
+    } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+        player.dx = -player.speed;
+        player.facingDirection = -1; // 更新朝向
+    } else if (e.key === ' ' || e.key.toLowerCase() === 'k') { // 空格鍵或 'k' 鍵射擊
+        shoot();
+    }
+    // 可以添加 'ArrowUp' 或 'w' 來控制跳躍 (dy)
+}
+// handleKeyUp 保持不變
+
+// 修改 gameLoop 加入子彈更新與繪製
+function gameLoop() {
+    if (!player.isAlive) {
+        if (gameOverScreen.style.display === 'none') {
+            gameOver();
+        }
+        return;
+    }
+
+    clearCanvas();
+
+    updatePlayerPosition();
+    updateEnemies();
+    updateBullets(); // 更新子彈狀態
+
+    drawPlayer();
+    drawEnemies();
+    drawBullets(); // 繪製子彈
+
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// 修改 init 清空子彈
+function init() {
+    time = 120;
+    score = 0;
+    // money = 100; // 通常金錢會繼承或有初始值
+    player.x = canvasWidth / 2;
+    player.y = canvasHeight - 50;
+    player.health = 100;
+    player.isAlive = true;
+    player.dx = 0;
+    player.dy = 0;
+    player.facingDirection = 1; // 初始朝右
+    player.weapon.lastShotTime = 0; // 重置射擊冷卻
+
+    enemies = [];
+    bullets = []; // 清空子彈陣列
+
+    scoreDisplay.innerText = score;
+    moneyDisplay.innerText = money;
+    levelDisplay.innerText = level;
+    timeDisplay.innerText = time;
+    gameOverScreen.style.display = 'none';
+
+    clearInterval(gameInterval);
+    gameInterval = setInterval(updateTimer, 1000);
+
+    stopEnemySpawn();
+    startEnemySpawn();
+
+    if (typeof animationFrameId !== 'undefined') {
+        cancelAnimationFrame(animationFrameId);
+    }
+    gameLoop();
+}
+
+// 修改 levelComplete 清空子彈
+function levelComplete() {
+    clearInterval(gameInterval);
+    cancelAnimationFrame(animationFrameId);
+    stopEnemySpawn();
+
+    score += time * 10;
+    money += 50 + (level * 20);
+
+    scoreDisplay.innerText = score;
+    moneyDisplay.innerText = money;
+
+    alert(`關卡 ${level} 完成！\n獲得分數：${score}\n獲得金錢：${money}`);
+
+    level++;
+    if (level > 3) {
+        alert("恭喜你！已通關所有關卡！");
+        init(); // 或顯示通關畫面
+    } else {
+        time = 120;
+        player.x = canvasWidth / 2;
+        player.y = canvasHeight - 50;
+        player.health = 100; // 回滿血或部分回復
+        player.weapon.lastShotTime = 0; // 重置射擊冷卻
+        enemies = [];
+        bullets = []; // 清空子彈
+        levelDisplay.innerText = level;
+        timeDisplay.innerText = time;
+        gameInterval = setInterval(updateTimer, 1000);
+        stopEnemySpawn();
+        startEnemySpawn();
+        gameLoop();
+    }
+}
+
+// gameOver 時也應清空子彈 (雖然遊戲結束了，但為了重啟時的乾淨狀態)
+function gameOver() {
+    player.isAlive = false;
+    clearInterval(gameInterval);
+    cancelAnimationFrame(animationFrameId);
+    stopEnemySpawn();
+    bullets = []; // 清空子彈
+    finalScoreDisplay.innerText = score;
+    gameOverScreen.style.display = 'block';
+}
+
+// (在 init() 函數調用之前，可以先定義玩家的初始武器，如果需要更複雜的武器系統)
+// 例如:
+// player.weapon = { ... } 已在 player 物件旁定義
+
+init(); // 確保遊戲開始時調用
